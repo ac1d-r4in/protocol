@@ -393,7 +393,8 @@ std::vector<unsigned char> XMSS::getPublicKey() const {
 std::vector<unsigned char> XMSS::getSignature(std::vector<unsigned char> msg) {
     std::map<int, std::vector<unsigned char>> sito;
     sito[0] = keccak(msg, 32);
-    return getSign(sito);
+    getSign(sito);
+    return SIGN;
 }
 
 std::vector<unsigned char> XMSS::getSign(std::map<int, std::vector<unsigned char>> sito) {
@@ -405,16 +406,10 @@ std::vector<unsigned char> XMSS::getSign(std::map<int, std::vector<unsigned char
         ispath = xmsl->ispath || xmsr->ispath;
         if (ispath) {
             if (xmsl->ispath) {
-
                 SIGN = Con(xmsl->SIGN, r);
-
-
             }
             else {
-
                 SIGN = Con(xmsr->SIGN, l);
-
-
             }
         }
         for (int i = 0; i < r.size(); ++i) {

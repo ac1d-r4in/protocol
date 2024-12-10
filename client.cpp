@@ -25,11 +25,11 @@ void sendSigned(int socket, const string &message, XMSS &xmss) {
     vector<unsigned char> publicKey = xmss.getPublicKey();
     vector<unsigned char> signature = xmss.getSignature(stringToVector(message));
 
-    std::cout << "Signature (client): ";
-    for (const auto& byte : signature) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
-    }
-    std::cout << "\n";
+    // std::cout << "Signature (client): ";
+    // for (const auto& byte : signature) {
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
+    // }
+    // std::cout << "\n";
 
     uint32_t msgLen = htonl(message.size());
     uint32_t sigLen = htonl(signature.size());
@@ -43,12 +43,11 @@ void sendSigned(int socket, const string &message, XMSS &xmss) {
     buffer.insert(buffer.end(), reinterpret_cast<unsigned char *>(&pkLen), reinterpret_cast<unsigned char *>(&pkLen) + sizeof(pkLen));
     buffer.insert(buffer.end(), publicKey.begin(), publicKey.end());
 
-    // Вывод итогового буфера
-    std::cout << "Sending message: [";
-    for (const auto& byte : buffer) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
-    }
-    std::cout << "]\n";
+    // std::cout << "Sending message: [";
+    // for (const auto& byte : buffer) {
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
+    // }
+    // std::cout << "]\n";
 
     send(socket, buffer.data(), buffer.size(), 0);
 }

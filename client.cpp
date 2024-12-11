@@ -52,17 +52,25 @@ int main() {
     uint8_t chachaKey[32];
     getSharedSecretHash(chachaKey, shared); // вычисляем симметричный ключ #CHACHA20 из хэша #KECCAK
 
-    std::cout << "Success! You can start sending messages:\n" << std::endl;
+    std::cout << "Success! You can start sending messages:" << std::endl;
     
     std::string message;
     while (true) {
 
         // ОТПРАВЛЯЕМ СООБЩЕНИЕ СЕРВЕРУ
 
-        std::cout << "Enter message (type 'exit' to quit): ";
+        std::cout << "\nEnter message (type 'exit' to quit): ";
         std::getline(std::cin, message);
         if (message == "exit") {
             break;
+        }
+        if (message.length() == 0) {
+            std::cout << "Message should be not empty!\n";
+            continue;
+        }
+        if (message.length() > 1024) {
+            std::cout << "Message is too big!\n";
+            continue;
         }
 
         size_t msgLength = message.size();

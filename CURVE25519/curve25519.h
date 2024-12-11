@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sodium.h>
+#include <random>
 
 typedef unsigned char u8;
 typedef long long i64;
@@ -39,9 +39,14 @@ const field_elem Curve25519::_121665 = {0xDB41, 1};
 // extern void randombytes(u8 *, u64);
 const u8 Curve25519::_9[32] = {9};
 
-// Используем встроенную функцию libsodium
 void Curve25519::randombytes(u8 *buf, u64 size) {
-    randombytes_buf(buf, size);
+    std::random_device rd; // Источник случайности
+    std::mt19937 gen(rd()); // Генератор случайных чисел
+    std::uniform_int_distribution<> dis(0, 255); // Диапазон: 0-255 (байты)
+
+    for (u64 i = 0; i < size; ++i) {
+        buf[i] = static_cast<u8>(dis(gen)); // Заполняем массив случайными байтами
+    }
 }
 
 // Преобразует 32-байтовое число (массив in из 32 байт) в представление, состоящее из 16 элементов 16-битных целых чисел (field_elem).

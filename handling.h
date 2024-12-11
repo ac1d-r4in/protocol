@@ -25,7 +25,7 @@ XMSS createNewXMSSObject() {
     return XMSS(sign1, sign2);
 }
 
-std::string u8ArrayToString(const u8* array, size_t size) {
+std::string uint8_tArrayToString(const uint8_t* array, size_t size) {
     std::ostringstream oss;
     for (size_t i = 0; i < size; ++i) {
         // Форматируем каждый байт в виде двух шестнадцатеричных символов
@@ -37,15 +37,13 @@ std::string u8ArrayToString(const u8* array, size_t size) {
 #include <string>
 #include <cstring> // Для memcpy
 
-typedef unsigned char u8;
-
-// Преобразование std::string в u8*
-u8* stringToU8Array(const std::string& str) {
+// Преобразование std::string в uint8_t*
+uint8_t* stringTouint8_tArray(const std::string& str) {
     size_t size = str.size();
-    u8* u8Array = new u8[size + 1]; // Выделяем память (включая нуль-терминатор)
-    std::memcpy(u8Array, str.c_str(), size); // Копируем данные
-    u8Array[size] = '\0'; // Завершаем нуль-терминатором
-    return u8Array;
+    uint8_t* uint8_tArray = new uint8_t[size + 1]; // Выделяем память (включая нуль-терминатор)
+    std::memcpy(uint8_tArray, str.c_str(), size); // Копируем данные
+    uint8_tArray[size] = '\0'; // Завершаем нуль-терминатором
+    return uint8_tArray;
 }
 
 #include <iostream>
@@ -60,7 +58,7 @@ void print_hex(const char* label, const unsigned char* data, size_t size) {
 }
 
 // подпись и отправка сообщения
-void sendSigned(int socket, const u8* message, XMSS &xmss) {
+void sendSigned(int socket, const uint8_t* message, XMSS &xmss) {
 
     std::size_t messageLen = CURVE25519_KEY_LEN;
 
@@ -87,7 +85,7 @@ void sendSigned(int socket, const u8* message, XMSS &xmss) {
 }
 
 // получение и валидация сообщения
-bool receiveSigned(int socket, u8* message, int* returnCode) {
+bool receiveSigned(int socket, uint8_t* message, int* returnCode) {
     int size = BUFFER_SIZE;
     char* buffer = new char[size];
 
@@ -112,7 +110,7 @@ bool receiveSigned(int socket, u8* message, int* returnCode) {
         return false;
     }
 
-    // Копируем сообщение в u8[32]
+    // Копируем сообщение в uint8_t[32]
     std::memcpy(message, buffer + 4, 32);
 
     // Извлекаем длину подписи и саму подпись

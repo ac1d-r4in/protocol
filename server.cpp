@@ -48,12 +48,12 @@ int main() {
     std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
     XMSS xmss = createNewXMSSObject();
 
-    u8 bobPrivate[32], bobPublic[32];
-    u8 bobShared[32];
+    uint8_t bobPrivate[32], bobPublic[32];
+    uint8_t bobShared[32];
     Curve25519::generate_keypair(bobPublic, bobPrivate);
 
     int result = 0;
-    u8 alicePublic[32];
+    uint8_t alicePublic[32];
     bool recieved = receiveSigned(clientSocket, alicePublic, &result);
 
     if(!recieved) {

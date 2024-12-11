@@ -1,11 +1,9 @@
 #include "includes.h"
 
-using namespace std;
-
 int main() {
 
     std::cout << "Connecting to server..." << std::endl;
-    string serverIP = IP;
+    std::string serverIP = IP;
     int port = PORT;
     
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -25,17 +23,17 @@ int main() {
         return 2;
     }
 
-    cout << "Connected to server " << serverIP << " on port " << port << ".\n<<<<<<<<<<<<<<<<<<<<<<\n";
+    std::cout << "Connected to server " << serverIP << " on port " << port << ".\n<<<<<<<<<<<<<<<<<<<<<<\n";
 
     std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
     XMSS xmss = createNewXMSSObject();
 
-    u8 alicePrivate[32], alicePublic[32], aliceShared[32];
+    uint8_t alicePrivate[32], alicePublic[32], aliceShared[32];
     Curve25519::generate_keypair(alicePublic, alicePrivate);
     sendSigned(clientSocket, alicePublic, xmss);
 
     int result = 0;
-    u8 bobPublic[32];
+    uint8_t bobPublic[32];
     bool recieved = receiveSigned(clientSocket, bobPublic, &result);
 
     if(!recieved) {

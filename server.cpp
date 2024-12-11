@@ -29,6 +29,10 @@ int main() {
         return 1;
     }
 
+    std::cout << "Initializing XMSS keys..." << std::endl;
+    XMSS xmss = createNewXMSSObject();
+    std::cout << "Ready!" << std::endl;
+
     std::cout << "Waiting for a connection...\n";
 
     // Принятие входящего соединения
@@ -46,43 +50,36 @@ int main() {
     std::cout << "Client connected from " << clientIP << "\n";
 
     // Обработка сообщений
-    char buffer[2048];
-    while (true) {
-        memset(buffer, 0, sizeof(buffer));
-        ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
-        if (bytesRead < 0) {
-            std::cerr << "Error: Unable to read from client.\n";
-            break;
+    bool exitloop = false;
+    while (!exitloop) {
+        
+        int result = 0;
+        std::string message = recieveSigned(clientSocket, &result);
+
+        if(message.length() > 0) {
+            // Отправляем ответное сообщение клиенту
+            std::string responseString;
+            responseString = "Recieved message: \"" + message + "\"\n\n";
+            // std::cout << responseString << std::endl;
+            sendSigned(clientSocket, responseString, xmss);
         }
-        if (bytesRead == 0) {
-            std::cout << "Client disconnected.\n";
-            break;
+        else {
+            switch (result) {
+                case 1:
+                    std::cout << "Error: Unable to read from client." << std::endl;
+                    exitloop = true;
+                    break;
+                case 2:
+                    std::cout << "Client disconnected. Shutting down server." << std::endl;
+                    exitloop = true;
+                    break;
+                case 3:
+                    sendSigned(clientSocket, "Could not validate signature from client, please try again or contact your administrator!", xmss);
+                    break;
+                default:
+                    break;
+            }
         }
-
-        uint32_t msgLen = ntohl(*reinterpret_cast<uint32_t*>(buffer));
-        uint32_t sigLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen));
-
-        std::vector<unsigned char> signature(buffer + 4 + msgLen + 4, buffer + 4 + msgLen + 4 + sigLen);
-        // std::cout << "Signature (server): ";
-        // for (const auto& byte : signature) {
-        //     std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
-        // }
-        // std::cout << "\n";
-
-        uint32_t pkLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen + 4 + sigLen));
-        std::vector<unsigned char> publicKey(buffer + 4 + msgLen + 4 + sigLen + 4, buffer + 4 + msgLen + 4 + sigLen + 4 + pkLen);
-
-        std::vector<unsigned char> message(buffer + 4, buffer + 4 + msgLen);
-
-        // #XMSS Проверка подписи
-        bool isValid = XMSS::Verify(message, signature, publicKey);
-        if (!isValid) {
-            std::cout << "Message did not pass validation.\n";
-            continue;
-        }
-
-        std::string messageStr(message.begin(), message.end());
-        std::cout << "Message: " << messageStr << "\n";
     }
 
     close(clientSocket);

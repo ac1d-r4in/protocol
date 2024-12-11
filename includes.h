@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 
 #include "XMSS/XMSS.h" // Подпись XMSS
-#include "stringToVector.h"
+#include "XMSS_handling.h"
 
 #define IP "127.0.0.1"
 #define PORT 8080

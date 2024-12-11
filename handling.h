@@ -33,11 +33,10 @@ void print_hex(const char* label, const uint8_t* data, size_t size) {
 }
 
 // подпись и отправка сообщения
-void sendSigned(int socket, const uint8_t* message, XMSS &xmss) {
+void sendSignedKey(int socket, const uint8_t* message, XMSS &xmss) {
 
     std::size_t messageLen = CURVE25519_KEY_LEN;
 
-    // Получаем публичный ключ и подпись
     std::vector<uint8_t> publicKey = xmss.getPublicKey();
     std::vector<uint8_t> signature = xmss.getSignature(std::vector<uint8_t>(message, message + messageLen));
 
@@ -46,7 +45,6 @@ void sendSigned(int socket, const uint8_t* message, XMSS &xmss) {
     uint32_t sigLen = htonl(static_cast<uint32_t>(signature.size()));
     uint32_t pkLen = htonl(static_cast<uint32_t>(publicKey.size()));
 
-    // Создаем буфер для отправки
     std::vector<uint8_t> buffer;
     buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&msgLen), reinterpret_cast<uint8_t*>(&msgLen) + sizeof(msgLen));
     buffer.insert(buffer.end(), message, message + messageLen);
@@ -55,16 +53,14 @@ void sendSigned(int socket, const uint8_t* message, XMSS &xmss) {
     buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&pkLen), reinterpret_cast<uint8_t*>(&pkLen) + sizeof(pkLen));
     buffer.insert(buffer.end(), publicKey.begin(), publicKey.end());
 
-    // Отправляем буфер по сокету
-    send(socket, buffer.data(), buffer.size(), 0);
+    size_t bytesSent = send(socket, buffer.data(), buffer.size(), 0);
 }
 
 // получение и валидация сообщения
-bool receiveSigned(int socket, uint8_t* message, int* returnCode) {
+bool receiveSignedKey(int socket, uint8_t* message, int* returnCode) {
     int size = BUFFER_SIZE;
     char* buffer = new char[size];
 
-    // Получаем данные из сокета
     ssize_t bytesRead = recv(socket, buffer, size, 0);
     if (bytesRead < 0) {
         delete[] buffer;
@@ -85,17 +81,14 @@ bool receiveSigned(int socket, uint8_t* message, int* returnCode) {
     }
 
     std::memcpy(message, buffer + 4, 32);
+    std::vector<uint8_t> messageVec(message, message + 32);
 
-    // Извлекаем длину подписи и саму подпись
     uint32_t sigLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen));
     std::vector<uint8_t> signature(buffer + 4 + msgLen + 4, buffer + 4 + msgLen + 4 + sigLen);
 
-    // Извлекаем длину публичного ключа и сам публичный ключ
     uint32_t pkLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen + 4 + sigLen));
     std::vector<uint8_t> publicKey(buffer + 4 + msgLen + 4 + sigLen + 4, buffer + 4 + msgLen + 4 + sigLen + 4 + pkLen);
 
-    // Проверяем подпись
-    std::vector<uint8_t> messageVec(message, message + 32);
     bool isValid = XMSS::Verify(messageVec, signature, publicKey);
     if (!isValid) {
         delete[] buffer;

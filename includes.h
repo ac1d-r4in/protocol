@@ -1,5 +1,10 @@
 #pragma once
 
+#define IP "127.0.0.1"
+#define PORT 8080
+
+#define CURVE25519_KEY_LEN 32
+
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -10,7 +15,5 @@
 #include <sys/socket.h>
 
 #include "XMSS/XMSS.h" // Подпись XMSS
-#include "XMSS_handling.h"
-
-#define IP "127.0.0.1"
-#define PORT 8080
+#include "CURVE25519/curve25519.h"
+#include "handling.h"

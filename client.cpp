@@ -27,43 +27,61 @@ int main() {
 
     cout << "Connected to server " << serverIP << " on port " << port << ".\n<<<<<<<<<<<<<<<<<<<<<<\n";
 
-    std::cout << "Initializing XMSS keys..." << std::endl;
+    std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
     XMSS xmss = createNewXMSSObject();
-    std::cout << "Ready!\n" << std::endl;
 
-    string message;
-    while (true) {
-        cout << "Enter message (type 'exit' to quit): ";
-        getline(std::cin, message);
-        if (message == "exit") {
-            break;
-        }
-        if (message.length() < 1) {
-            cout << "Message should not be empty!";
-            continue;
-        }
-        
-        sendSigned(clientSocket, message, xmss);
+    u8 alicePrivate[32], alicePublic[32], aliceShared[32];
+    Curve25519::generate_keypair(alicePublic, alicePrivate);
+    sendSigned(clientSocket, alicePublic, xmss);
 
-        int result = 0;
-        std::string serverResponse = recieveSigned(clientSocket, &result);
+    int result = 0;
+    u8 bobPublic[32];
+    bool recieved = receiveSigned(clientSocket, bobPublic, &result);
 
-        if(serverResponse.length() > 0) {
-            // Отправляем ответное сообщение клиенту
-            std::string responseString;
-            cout << "[SERVER]: " << serverResponse << std::endl;
-        }
-        else {
-            switch (result) {
-                case 1:
-                case 2:
-                    std::cout << "Error reading responce from server. Shutting down connection." << std::endl;
-                    break;
-                default:
-                    continue;
-            }
-        }
+    if(!recieved) {
+        std::cout << "Not recieved!\n" << std::endl;
+        return 1;
     }
+
+    Curve25519::x25519(aliceShared, bobPublic, alicePrivate);
+
+    // print_hex("Shared key", aliceShared, 32);
+
+    std::cout << "Success! You can start sending messages:\n" << std::endl;
+    getchar();
+    // std::string message;
+    // while (true) {
+    //     std::cout << "Enter message:" << std::endl;
+    //     getline(std::cin, message);
+    //     if (message == "exit") {
+    //         break;
+    //     }
+    //     if (message.length() < 1) {
+    //         cout << "Message should not be empty!";
+    //         continue;
+    //     }
+        
+    //     sendSigned(clientSocket, message, xmss);
+
+    //     int result = 0;
+    //     std::string serverResponse = recieveSigned(clientSocket, &result);
+
+    //     if(serverResponse.length() > 0) {
+    //         // Отправляем ответное сообщение клиенту
+    //         std::string responseString;
+    //         cout << "[SERVER]: " << serverResponse << std::endl;
+    //     }
+    //     else {
+    //         switch (result) {
+    //             case 1:
+    //             case 2:
+    //                 std::cout << "Error reading responce from server. Shutting down connection." << std::endl;
+    //                 break;
+    //             default:
+    //                 continue;
+    //         }
+    //     }
+    // }
 
     close(clientSocket);
 

@@ -28,7 +28,7 @@ int main() {
     std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
     XMSS xmss = createNewXMSSObject();
 
-    uint8_t alicePrivate[32], alicePublic[32], aliceShared[32];
+    uint8_t alicePrivate[32], alicePublic[32], shared[32];
     Curve25519::generate_keypair(alicePublic, alicePrivate);
     sendSigned(clientSocket, alicePublic, xmss);
 
@@ -41,9 +41,11 @@ int main() {
         return 1;
     }
 
-    Curve25519::x25519(aliceShared, bobPublic, alicePrivate);
+    Curve25519::x25519(shared, bobPublic, alicePrivate);
 
-    // print_hex("Shared key", aliceShared, 32);
+    uint8_t chachaKey[32];
+    getSharedSecretHash(chachaKey, shared);
+    // print_hex("ChaCha key", chachaKey, 32);
 
     std::cout << "Success! You can start sending messages:\n" << std::endl;
     getchar();

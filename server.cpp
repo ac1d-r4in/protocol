@@ -49,7 +49,7 @@ int main() {
     XMSS xmss = createNewXMSSObject();
 
     uint8_t bobPrivate[32], bobPublic[32];
-    uint8_t bobShared[32];
+    uint8_t shared[32];
     Curve25519::generate_keypair(bobPublic, bobPrivate);
 
     int result = 0;
@@ -63,9 +63,11 @@ int main() {
 
     sendSigned(clientSocket, bobPublic, xmss);
 
-    Curve25519::x25519(bobShared, alicePublic, bobPrivate);
+    Curve25519::x25519(shared, alicePublic, bobPrivate);
 
-    // print_hex("Shared key", bobShared, 32);
+    uint8_t chachaKey[32];
+    getSharedSecretHash(chachaKey, shared);
+    // print_hex("ChaCha key", chachaKey, 32);
 
     std::cout << "Client successfully connected!" << std::endl;
     getchar();

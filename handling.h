@@ -1,55 +1,30 @@
 #pragma once
 
 #include "includes.h"
-#include <sstream>
 
 #define BUFFER_SIZE 2048
 
 // генерация сидов для инициализации XMSS
-std::vector<unsigned char> generate256BitNumber() {
-    std::vector<unsigned char> number(32); // 256 бит = 32 байта
+std::vector<uint8_t> generate256BitNumber() {
+    std::vector<uint8_t> number(32); // 256 бит = 32 байта
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<unsigned int> dis(0, 255);
 
     for (auto& byte : number) {
-        byte = static_cast<unsigned char>(dis(gen));
+        byte = static_cast<uint8_t>(dis(gen));
     }
     return number;
 }
 
 XMSS createNewXMSSObject() {
-    std::vector<unsigned char> sign1 = generate256BitNumber();
-    std::vector<unsigned char> sign2 = generate256BitNumber();
+    std::vector<uint8_t> sign1 = generate256BitNumber();
+    std::vector<uint8_t> sign2 = generate256BitNumber();
 
     return XMSS(sign1, sign2);
 }
 
-std::string uint8_tArrayToString(const uint8_t* array, size_t size) {
-    std::ostringstream oss;
-    for (size_t i = 0; i < size; ++i) {
-        // Форматируем каждый байт в виде двух шестнадцатеричных символов
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(array[i]);
-    }
-    return oss.str();
-}
-
-#include <string>
-#include <cstring> // Для memcpy
-
-// Преобразование std::string в uint8_t*
-uint8_t* stringTouint8_tArray(const std::string& str) {
-    size_t size = str.size();
-    uint8_t* uint8_tArray = new uint8_t[size + 1]; // Выделяем память (включая нуль-терминатор)
-    std::memcpy(uint8_tArray, str.c_str(), size); // Копируем данные
-    uint8_tArray[size] = '\0'; // Завершаем нуль-терминатором
-    return uint8_tArray;
-}
-
-#include <iostream>
-#include <iomanip>
-
-void print_hex(const char* label, const unsigned char* data, size_t size) {
+void print_hex(const char* label, const uint8_t* data, size_t size) {
     std::cout << label << ": ";
     for (size_t i = 0; i < size; ++i) {
         std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
@@ -63,8 +38,8 @@ void sendSigned(int socket, const uint8_t* message, XMSS &xmss) {
     std::size_t messageLen = CURVE25519_KEY_LEN;
 
     // Получаем публичный ключ и подпись
-    std::vector<unsigned char> publicKey = xmss.getPublicKey();
-    std::vector<unsigned char> signature = xmss.getSignature(std::vector<unsigned char>(message, message + messageLen));
+    std::vector<uint8_t> publicKey = xmss.getPublicKey();
+    std::vector<uint8_t> signature = xmss.getSignature(std::vector<uint8_t>(message, message + messageLen));
 
     // Конвертируем размеры в сетевой порядок
     uint32_t msgLen = htonl(static_cast<uint32_t>(messageLen));
@@ -72,12 +47,12 @@ void sendSigned(int socket, const uint8_t* message, XMSS &xmss) {
     uint32_t pkLen = htonl(static_cast<uint32_t>(publicKey.size()));
 
     // Создаем буфер для отправки
-    std::vector<unsigned char> buffer;
-    buffer.insert(buffer.end(), reinterpret_cast<unsigned char*>(&msgLen), reinterpret_cast<unsigned char*>(&msgLen) + sizeof(msgLen));
+    std::vector<uint8_t> buffer;
+    buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&msgLen), reinterpret_cast<uint8_t*>(&msgLen) + sizeof(msgLen));
     buffer.insert(buffer.end(), message, message + messageLen);
-    buffer.insert(buffer.end(), reinterpret_cast<unsigned char*>(&sigLen), reinterpret_cast<unsigned char*>(&sigLen) + sizeof(sigLen));
+    buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&sigLen), reinterpret_cast<uint8_t*>(&sigLen) + sizeof(sigLen));
     buffer.insert(buffer.end(), signature.begin(), signature.end());
-    buffer.insert(buffer.end(), reinterpret_cast<unsigned char*>(&pkLen), reinterpret_cast<unsigned char*>(&pkLen) + sizeof(pkLen));
+    buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&pkLen), reinterpret_cast<uint8_t*>(&pkLen) + sizeof(pkLen));
     buffer.insert(buffer.end(), publicKey.begin(), publicKey.end());
 
     // Отправляем буфер по сокету
@@ -102,7 +77,6 @@ bool receiveSigned(int socket, uint8_t* message, int* returnCode) {
         return false;
     }
 
-    // Извлекаем длину сообщения
     uint32_t msgLen = ntohl(*reinterpret_cast<uint32_t*>(buffer));
     if (msgLen != 32) {
         delete[] buffer;
@@ -110,19 +84,18 @@ bool receiveSigned(int socket, uint8_t* message, int* returnCode) {
         return false;
     }
 
-    // Копируем сообщение в uint8_t[32]
     std::memcpy(message, buffer + 4, 32);
 
     // Извлекаем длину подписи и саму подпись
     uint32_t sigLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen));
-    std::vector<unsigned char> signature(buffer + 4 + msgLen + 4, buffer + 4 + msgLen + 4 + sigLen);
+    std::vector<uint8_t> signature(buffer + 4 + msgLen + 4, buffer + 4 + msgLen + 4 + sigLen);
 
     // Извлекаем длину публичного ключа и сам публичный ключ
     uint32_t pkLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen + 4 + sigLen));
-    std::vector<unsigned char> publicKey(buffer + 4 + msgLen + 4 + sigLen + 4, buffer + 4 + msgLen + 4 + sigLen + 4 + pkLen);
+    std::vector<uint8_t> publicKey(buffer + 4 + msgLen + 4 + sigLen + 4, buffer + 4 + msgLen + 4 + sigLen + 4 + pkLen);
 
     // Проверяем подпись
-    std::vector<unsigned char> messageVec(message, message + 32);
+    std::vector<uint8_t> messageVec(message, message + 32);
     bool isValid = XMSS::Verify(messageVec, signature, publicKey);
     if (!isValid) {
         delete[] buffer;
@@ -132,4 +105,22 @@ bool receiveSigned(int socket, uint8_t* message, int* returnCode) {
 
     delete[] buffer;
     return true;
+}
+
+void getTimestampNonce(uint8_t* nonce, size_t size) {
+    uint64_t timestamp = static_cast<uint64_t>(std::time(nullptr)); // 8 байт
+    std::memcpy(nonce, &timestamp, std::min(size, sizeof(timestamp)));
+    if (size > sizeof(timestamp)) {
+        std::memset(nonce + sizeof(timestamp), 0, size - sizeof(timestamp));
+    }
+}
+
+void getSharedSecretHash(uint8_t* out, const uint8_t* msg) {
+
+    size_t msgLen = CHACHA20_KEY_LEN;
+
+    std::vector<unsigned char> msgVector(msg, msg + msgLen);
+    std::vector<unsigned char> resultVector = keccak(msgVector, msgLen);
+
+    std::copy(resultVector.begin(), resultVector.end(), out);
 }

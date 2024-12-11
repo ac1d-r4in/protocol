@@ -4,6 +4,7 @@
 #define PORT 8080
 
 #define CURVE25519_KEY_LEN 32
+#define CHACHA20_KEY_LEN 32
 
 #include <iostream>
 #include <iomanip>

@@ -5,6 +5,7 @@
 
 #define CURVE25519_KEY_LEN 32
 #define CHACHA20_KEY_LEN 32
+#define CHACHA20_NONCE_LEN 12
 
 #include <iostream>
 #include <iomanip>

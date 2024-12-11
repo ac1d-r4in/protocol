@@ -107,7 +107,10 @@ bool receiveSigned(int socket, uint8_t* message, int* returnCode) {
     return true;
 }
 
-void getTimestampNonce(uint8_t* nonce, size_t size) {
+void getTimestampNonce(uint8_t* nonce) {
+
+    size_t size = CHACHA20_NONCE_LEN;
+
     uint64_t timestamp = static_cast<uint64_t>(std::time(nullptr)); // 8 байт
     std::memcpy(nonce, &timestamp, std::min(size, sizeof(timestamp)));
     if (size > sizeof(timestamp)) {

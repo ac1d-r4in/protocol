@@ -65,9 +65,10 @@ int main() {
 
     Curve25519::x25519(shared, alicePublic, bobPrivate);
 
-    uint8_t chachaKey[32];
+    uint8_t chachaKey[32], chachaNonce[12];
     getSharedSecretHash(chachaKey, shared);
-    // print_hex("ChaCha key", chachaKey, 32);
+    // getTimestampNonce(chachaNonce);
+    print_hex("ChaCha key", chachaKey, 32);
 
     std::cout << "Client successfully connected!" << std::endl;
     getchar();

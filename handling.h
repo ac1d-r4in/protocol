@@ -127,3 +127,24 @@ void getSharedSecretHash(uint8_t* out, const uint8_t* msg) {
 
     std::copy(resultVector.begin(), resultVector.end(), out);
 }
+
+void chacha20Wrapper(char* out, const char* in, size_t msgLength, const uint8_t* key, bool decrypt = false) {
+    uint8_t nonce[CHACHA20_NONCE_LEN];
+    const uint8_t* inputData;
+
+    if (decrypt) {
+        memcpy(nonce, in, CHACHA20_NONCE_LEN);
+        inputData = reinterpret_cast<const uint8_t*>(in + CHACHA20_NONCE_LEN);
+        msgLength -= CHACHA20_NONCE_LEN;
+    } else {
+        getTimestampNonce(nonce);
+        inputData = reinterpret_cast<const uint8_t*>(in);
+    }
+
+    uint8_t* outputLocation = decrypt ? reinterpret_cast<uint8_t*>(out) : reinterpret_cast<uint8_t*>(out + CHACHA20_NONCE_LEN);
+    ChaCha20::encrypt(outputLocation, key, nonce, inputData, msgLength);
+
+    if (!decrypt) {
+        memcpy(out, nonce, CHACHA20_NONCE_LEN);
+    }
+}

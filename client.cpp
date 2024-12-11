@@ -48,40 +48,26 @@ int main() {
     // print_hex("ChaCha key", chachaKey, 32);
 
     std::cout << "Success! You can start sending messages:\n" << std::endl;
-    getchar();
-    // std::string message;
-    // while (true) {
-    //     std::cout << "Enter message:" << std::endl;
-    //     getline(std::cin, message);
-    //     if (message == "exit") {
-    //         break;
-    //     }
-    //     if (message.length() < 1) {
-    //         cout << "Message should not be empty!";
-    //         continue;
-    //     }
-        
-    //     sendSigned(clientSocket, message, xmss);
+    
+    std::string message;
+    while (true) {
+        std::cout << "Enter message (type 'exit' to quit): ";
+        std::getline(std::cin, message);
+        if (message == "exit") {
+            break;
+        }
 
-    //     int result = 0;
-    //     std::string serverResponse = recieveSigned(clientSocket, &result);
+        size_t msgLength = message.size();
+        size_t encryptedLength = msgLength + CHACHA20_NONCE_LEN;
+        char* encryptedMessage = new char[encryptedLength]; // Выходной буфер
 
-    //     if(serverResponse.length() > 0) {
-    //         // Отправляем ответное сообщение клиенту
-    //         std::string responseString;
-    //         cout << "[SERVER]: " << serverResponse << std::endl;
-    //     }
-    //     else {
-    //         switch (result) {
-    //             case 1:
-    //             case 2:
-    //                 std::cout << "Error reading responce from server. Shutting down connection." << std::endl;
-    //                 break;
-    //             default:
-    //                 continue;
-    //         }
-    //     }
-    // }
+        chacha20Wrapper(encryptedMessage, message.c_str(), msgLength, chachaKey, false);
+
+        // print_hex("Sending", reinterpret_cast<const uint8_t*>(encryptedMessage), msgLength+CHACHA20_NONCE_LEN);
+        send(clientSocket, encryptedMessage, encryptedLength, 0);
+
+        delete [] encryptedMessage;
+    }
 
     close(clientSocket);
 

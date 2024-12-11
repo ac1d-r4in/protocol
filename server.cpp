@@ -68,42 +68,41 @@ int main() {
     uint8_t chachaKey[32], chachaNonce[12];
     getSharedSecretHash(chachaKey, shared);
     // getTimestampNonce(chachaNonce);
-    print_hex("ChaCha key", chachaKey, 32);
+    // print_hex("ChaCha key", chachaKey, 32);
 
     std::cout << "Client successfully connected!" << std::endl;
-    getchar();
     
-    // Обработка сообщений
-    // bool exitloop = false;
-    // while (!exitloop) {
-        
-    //     int result = 0;
-    //     std::string message = recieveSigned(clientSocket, &result);
+    char buffer[BUFFER_SIZE];
+    while (true) {
+        memset(buffer, 0, sizeof(buffer));  // Очистка буфера
+        ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
+        if (bytesRead < 0) {
+            std::cerr << "Error: Unable to read from client.\n";
+            break;
+        }
+        if (bytesRead == 0) {
+            std::cout << "Client disconnected. Shutting down server.\n";
+            break;
+        }
 
-    //     if(message.length() > 0) {
-    //         // Отправляем ответное сообщение клиенту
-    //         std::cout << "Recieved: " << message << std::endl;
-    //         std::string responseString = "u8ArrayToString(curvePublic, 32)";
-    //         sendSigned(clientSocket, responseString, xmss);
-    //     }
-    //     else {
-    //         switch (result) {
-    //             case 1:
-    //                 std::cout << "Error: Unable to read from client." << std::endl;
-    //                 exitloop = true;
-    //                 break;
-    //             case 2:
-    //                 std::cout << "Client disconnected. Shutting down server." << std::endl;
-    //                 exitloop = true;
-    //                 break;
-    //             case 3:
-    //                 sendSigned(clientSocket, "Could not validate signature from client, please try again or contact your administrator!", xmss);
-    //                 break;
-    //             default:
-    //                 break;
-    //         }
-    //     }
-    // }
+        if (bytesRead <= CHACHA20_NONCE_LEN) {
+            std::cerr << "Error: Message too short to contain valid data.\n";
+            continue;
+        }
+
+        // print_hex("Received", reinterpret_cast<const uint8_t*>(buffer), bytesRead);
+
+        // Расшифровка сообщения с использованием chacha20Wrapper
+        size_t decryptedLength = bytesRead - CHACHA20_NONCE_LEN;
+        char* decryptedMessage = new char[decryptedLength];
+        chacha20Wrapper(decryptedMessage, buffer, bytesRead, chachaKey, true);
+
+        // Вывод расшифрованного сообщения
+        std::cout << "Decrypted message: " << std::string(decryptedMessage, decryptedLength) << '\n';
+
+        // Освобождаем память
+        delete[] decryptedMessage;
+    }
 
     close(clientSocket);
     close(serverSocket);

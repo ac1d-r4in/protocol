@@ -5,11 +5,9 @@
 
 class ChaCha20 {
 public:
-    // Публичный статический метод для шифрования
-    static uint8_t* encrypt(const uint8_t* key_bytes, uint32_t counter, const uint8_t* nonce_bytes, const uint8_t* plaintext, size_t len);
+    static void encrypt(uint8_t* output, const uint8_t* key_bytes, const uint8_t* nonce_bytes, const uint8_t* plaintext, size_t len);
 
 private:
-    // Приватные методы
     static uint32_t left_rotate(uint32_t value, size_t n);
     static void q_round(uint32_t* state, size_t a, size_t b, size_t c, size_t d);
     static void inner_block(uint32_t* state);
@@ -17,7 +15,6 @@ private:
     static void serialize(const uint32_t* state_array, uint8_t* output);
     static void bytes_to_uint32_array(const uint8_t* data, uint32_t* output, size_t length);
 
-    // Константы
     static const uint32_t CONSTANTS[4];
 };
 
@@ -93,15 +90,17 @@ void ChaCha20::bytes_to_uint32_array(const uint8_t* data, uint32_t* output, size
     }
 }
 
-uint8_t* ChaCha20::encrypt(const uint8_t* key_bytes, uint32_t counter, const uint8_t* nonce_bytes, const uint8_t* plaintext, size_t len) {
+void ChaCha20::encrypt(uint8_t* output, const uint8_t* key_bytes, const uint8_t* nonce_bytes, const uint8_t* plaintext, size_t len) {
     
     uint32_t key[8];
     uint32_t nonce[3];
 
+    uint8_t counter = 1;
+
     bytes_to_uint32_array(key_bytes, key, 32);
     bytes_to_uint32_array(nonce_bytes, nonce, 12);
     
-    uint8_t* ciphertext = new uint8_t[len];
+    // uint8_t* ciphertext = new uint8_t[len];
     for (int j = 0; j < floor(len/64); ++j) {
         uint32_t block_output[16];
         uint8_t keystream[64];
@@ -110,7 +109,7 @@ uint8_t* ChaCha20::encrypt(const uint8_t* key_bytes, uint32_t counter, const uin
 
         const uint8_t* block = plaintext + j * 64;
         for (size_t i = 0; i < 64; ++i) {
-            ciphertext[i+j*64] = block[i] ^ keystream[i];
+            output[i+j*64] = block[i] ^ keystream[i];
         }
     }
 
@@ -121,11 +120,9 @@ uint8_t* ChaCha20::encrypt(const uint8_t* key_bytes, uint32_t counter, const uin
         serialize(block_output, keystream);
         const uint8_t* block = plaintext + (len / 64) * 64;
         for (size_t i = 0; i < len % 64; i++) {
-            ciphertext[i + (len / 64) * 64] = block[i] ^ keystream[i];
+            output[i + (len / 64) * 64] = block[i] ^ keystream[i];
         }
     }
-
-    return ciphertext;
 }
 
 // int main() {

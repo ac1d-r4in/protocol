@@ -47,7 +47,7 @@ void sendVerificationKey(int socket, XMSS &xmss) {
         throw std::runtime_error("Error sending public key.");
     }
 
-    // print_hex("Sending", publicKey.data(), publicKey.size());
+    print_hex("[XMSS] Our verification key", verificationKey.data(), verificationKey.size());
 }
 
 // получение ключа для проверки подписи
@@ -57,7 +57,7 @@ void receiveVerificationKey(int socket, uint8_t* verificationKey) {
         throw std::runtime_error("Error receiving public key or invalid key size.");
     }
 
-    // print_hex("Received", publicKey, XMSS_KEY_LEN);
+    print_hex("[XMSS] Recipient verification key", verificationKey, XMSS_KEY_LEN);
 }
 
 // подпись и отправка сообщения
@@ -71,10 +71,13 @@ void sendSignedKey(int socket, const uint8_t* key, XMSS &xmss) {
     buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&sigLen), reinterpret_cast<uint8_t*>(&sigLen) + sizeof(sigLen)); // Добавляем длину подписи
     buffer.insert(buffer.end(), signature.begin(), signature.end());
 
+    print_hex("[Curve25519] Our public key", key, CURVE25519_KEY_LEN);
+
     size_t bytesSent = send(socket, buffer.data(), buffer.size(), 0);
     if (bytesSent != buffer.size()) {
         throw std::runtime_error("Error sending signed key.");
     }
+
 }
 
 // получение и валидация сообщения
@@ -123,6 +126,8 @@ bool receiveSignedKey(int socket, uint8_t* senderPublicKey, uint8_t* senderVerif
         return false;
     }
 
+    print_hex("[Curve25519] Recipient public key (verified)", senderPublicKey, CURVE25519_KEY_LEN);
+
     delete[] buffer;
     return true;
 }
@@ -137,6 +142,8 @@ void getTimestampNonce(uint8_t* nonce) {
     if (size > sizeof(timestamp)) {
         std::memset(nonce + sizeof(timestamp), 0, size - sizeof(timestamp));
     }
+
+    // print_hex("[ChaCha20] Session nonce", nonce, size);
 }
 
 // генерация ключа для #ChaCha20 из хеша #Keccak
@@ -148,6 +155,8 @@ void getSharedSecretHash(uint8_t* out, const uint8_t* msg) {
     std::vector<unsigned char> resultVector = keccak(msgVector, msgLen);
 
     std::copy(resultVector.begin(), resultVector.end(), out);
+
+    print_hex("[ChaCha20] Session key", resultVector.data(), msgLen);
 }
 
 // обертка для шифрования и дешифрования сообщений с #ChaCha20
@@ -169,5 +178,6 @@ void chacha20Wrapper(char* out, const char* in, size_t msgLength, const uint8_t*
 
     if (!decrypt) {
         memcpy(out, nonce, CHACHA20_NONCE_LEN);
+        // std::cout << "[ChaCha20] Ciphertext" << out << std::endl;
     }
 }

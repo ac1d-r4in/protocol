@@ -51,7 +51,7 @@ int main() {
     // КЛИЕНТ ПОДСОЕДИНИЛСЯ, НАЧИНАЕМ КРИПТОГРАФИЮ
 
     std::cout << "Client trying to connect from " << clientIP << "\n";
-    std::cout << "Exchanging XMSS public keys with client..." << std::endl;
+    std::cout << "\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n" << "\nExchanging XMSS public keys with client...\n\n";
 
     XMSS xmss = createNewXMSSObject(); // создаем объект #XMSS который содержит наш ключ и подпись
 
@@ -59,7 +59,7 @@ int main() {
     receiveVerificationKey(clientSocket, clientVerifyKey);
     sendVerificationKey(clientSocket, xmss);
 
-    std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
+    std::cout << "\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n" << "\nInitializing XMSS-Curve25519 handshake...\n\n";
 
     uint8_t bobPrivate[32], bobPublic[32]; // сервер это Боб
     uint8_t shared[32];
@@ -82,7 +82,7 @@ int main() {
     uint8_t chachaKey[32], chachaNonce[12];
     getSharedSecretHash(chachaKey, shared); // вычисляем симметричный ключ #CHACHA20 из хэша #KECCAK
 
-    std::cout << "Client successfully connected!" << std::endl;
+    std::cout << "\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n" << "\nClient successfully connected!" << std::endl;
     
     char buffer[BUFFER_SIZE];
     while (true) {

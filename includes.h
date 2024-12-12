@@ -3,6 +3,7 @@
 #define IP "127.0.0.1"
 #define PORT 8000
 
+#define XMSS_KEY_LEN 32
 #define CURVE25519_KEY_LEN 32
 #define CHACHA20_KEY_LEN 32
 #define CHACHA20_NONCE_LEN 12

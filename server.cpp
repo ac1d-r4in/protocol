@@ -54,6 +54,10 @@ int main() {
     std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
     XMSS xmss = createNewXMSSObject(); // создаем объект #XMSS который содержит наш ключ и подпись
 
+    uint8_t aliceXMSSPK[32];
+    receiveXMSSPublicKey(clientSocket, aliceXMSSPK);
+    sendXMSSPublicKey(clientSocket, xmss);
+
     uint8_t bobPrivate[32], bobPublic[32]; // сервер это Боб
     uint8_t shared[32];
 
@@ -61,7 +65,7 @@ int main() {
 
     int result = 0;
     uint8_t alicePublic[32];
-    bool recieved = receiveSignedKey(clientSocket, alicePublic, &result);  // получаем (и проверяем) подписанный #XMSS ключ клиента
+    bool recieved = receiveSignedKey(clientSocket, alicePublic, aliceXMSSPK, &result);  // получаем (и проверяем) подписанный #XMSS ключ клиента
 
     if(!recieved) {
         std::cout << "Could not verify signature! Error code: " << result << std::endl;

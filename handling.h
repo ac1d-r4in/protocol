@@ -6,7 +6,7 @@
 
 // генерация сидов для инициализации XMSS
 std::vector<uint8_t> generate256BitNumber() {
-    std::vector<uint8_t> number(32); // 256 бит = 32 байта
+    std::vector<uint8_t> number(XMSS_KEY_LEN); // 256 бит = 32 байта
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<unsigned int> dis(0, 255);
@@ -33,31 +33,54 @@ void print_hex(const char* label, const uint8_t* data, size_t size) {
 }
 
 // подпись и отправка сообщения
-void sendSignedKey(int socket, const uint8_t* message, XMSS &xmss) {
+void sendXMSSPublicKey(int socket, XMSS &xmss) {
+    // Получаем публичный ключ XMSS
+    std::vector<uint8_t> publicKey = xmss.getPublicKey();
+
+    if (publicKey.size() != XMSS_KEY_LEN) {
+        throw std::runtime_error("Public key size mismatch. Expected 32 bytes.");
+    }
+
+    // Отправляем публичный ключ
+    size_t bytesSent = send(socket, publicKey.data(), publicKey.size(), 0);
+    if (bytesSent != publicKey.size()) {
+        throw std::runtime_error("Error sending public key.");
+    }
+
+    print_hex("Sending", publicKey.data(), publicKey.size());
+}
+
+void receiveXMSSPublicKey(int socket, uint8_t* publicKey) {
+    ssize_t bytesRead = recv(socket, publicKey, XMSS_KEY_LEN, 0);
+    if (bytesRead <= 0 || bytesRead != XMSS_KEY_LEN) {
+        throw std::runtime_error("Error receiving public key or invalid key size.");
+    }
+
+    print_hex("Received", publicKey, XMSS_KEY_LEN);
+}
+
+// подпись и отправка сообщения
+void sendSignedKey(int socket, const uint8_t* key, XMSS &xmss) {
 
     std::size_t messageLen = CURVE25519_KEY_LEN;
 
-    std::vector<uint8_t> publicKey = xmss.getPublicKey();
-    std::vector<uint8_t> signature = xmss.getSignature(std::vector<uint8_t>(message, message + messageLen));
+    std::vector<uint8_t> signature = xmss.getSignature(std::vector<uint8_t>(key, key + messageLen));
 
     // Конвертируем размеры в сетевой порядок
     uint32_t msgLen = htonl(static_cast<uint32_t>(messageLen));
     uint32_t sigLen = htonl(static_cast<uint32_t>(signature.size()));
-    uint32_t pkLen = htonl(static_cast<uint32_t>(publicKey.size()));
 
     std::vector<uint8_t> buffer;
     buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&msgLen), reinterpret_cast<uint8_t*>(&msgLen) + sizeof(msgLen));
-    buffer.insert(buffer.end(), message, message + messageLen);
+    buffer.insert(buffer.end(), key, key + messageLen);
     buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&sigLen), reinterpret_cast<uint8_t*>(&sigLen) + sizeof(sigLen));
     buffer.insert(buffer.end(), signature.begin(), signature.end());
-    buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&pkLen), reinterpret_cast<uint8_t*>(&pkLen) + sizeof(pkLen));
-    buffer.insert(buffer.end(), publicKey.begin(), publicKey.end());
 
     size_t bytesSent = send(socket, buffer.data(), buffer.size(), 0);
 }
 
 // получение и валидация сообщения
-bool receiveSignedKey(int socket, uint8_t* message, int* returnCode) {
+bool receiveSignedKey(int socket, uint8_t* senderPublicKey, uint8_t* senderVerifyKey, int* returnCode) {
     int size = BUFFER_SIZE;
     char* buffer = new char[size];
 
@@ -74,22 +97,21 @@ bool receiveSignedKey(int socket, uint8_t* message, int* returnCode) {
     }
 
     uint32_t msgLen = ntohl(*reinterpret_cast<uint32_t*>(buffer));
-    if (msgLen != 32) {
+    if (msgLen != CURVE25519_KEY_LEN) {
         delete[] buffer;
         *returnCode = 4; // Неверная длина сообщения
         return false;
     }
 
-    std::memcpy(message, buffer + 4, 32);
-    std::vector<uint8_t> messageVec(message, message + 32);
+    std::memcpy(senderPublicKey, buffer + 4, CURVE25519_KEY_LEN);
+    std::vector<uint8_t> messageVec(senderPublicKey, senderPublicKey + CURVE25519_KEY_LEN);
 
     uint32_t sigLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen));
     std::vector<uint8_t> signature(buffer + 4 + msgLen + 4, buffer + 4 + msgLen + 4 + sigLen);
 
-    uint32_t pkLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen + 4 + sigLen));
-    std::vector<uint8_t> publicKey(buffer + 4 + msgLen + 4 + sigLen + 4, buffer + 4 + msgLen + 4 + sigLen + 4 + pkLen);
+    std::vector<uint8_t> senderVerifyKeyVec(senderVerifyKey, senderVerifyKey + XMSS_KEY_LEN);
 
-    bool isValid = XMSS::Verify(messageVec, signature, publicKey);
+    bool isValid = XMSS::Verify(messageVec, signature, senderVerifyKeyVec);
     if (!isValid) {
         delete[] buffer;
         *returnCode = 3; // Неверная подпись

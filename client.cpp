@@ -29,12 +29,15 @@ int main() {
 
     // ПОДКЛЮЧИЛИСЬ, НАЧИНАЕМ КРИПТОГРАФИЮ
 
-    std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
+    std::cout << "Exchanging XMSS public keys with server..." << std::endl;
+
     XMSS xmss = createNewXMSSObject();  // создаем объект #XMSS который содержит наш ключ и подпись
 
     uint8_t bobXMSSPK[32];
-    sendXMSSPublicKey(clientSocket, xmss);
-    receiveXMSSPublicKey(clientSocket, bobXMSSPK);
+    sendVerificationKey(clientSocket, xmss);
+    receiveVerificationKey(clientSocket, bobXMSSPK);
+
+    std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
 
     uint8_t alicePrivate[32], alicePublic[32]; // клиент это Алиса
     uint8_t shared[32];

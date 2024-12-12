@@ -51,12 +51,15 @@ int main() {
     // КЛИЕНТ ПОДСОЕДИНИЛСЯ, НАЧИНАЕМ КРИПТОГРАФИЮ
 
     std::cout << "Client trying to connect from " << clientIP << "\n";
-    std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
+    std::cout << "Exchanging XMSS public keys with client..." << std::endl;
+
     XMSS xmss = createNewXMSSObject(); // создаем объект #XMSS который содержит наш ключ и подпись
 
-    uint8_t aliceXMSSPK[32];
-    receiveXMSSPublicKey(clientSocket, aliceXMSSPK);
-    sendXMSSPublicKey(clientSocket, xmss);
+    uint8_t clientVerifyKey[32];
+    receiveVerificationKey(clientSocket, clientVerifyKey);
+    sendVerificationKey(clientSocket, xmss);
+
+    std::cout << "Initializing XMSS-Curve25519 handshake..." << std::endl;
 
     uint8_t bobPrivate[32], bobPublic[32]; // сервер это Боб
     uint8_t shared[32];
@@ -65,7 +68,7 @@ int main() {
 
     int result = 0;
     uint8_t alicePublic[32];
-    bool recieved = receiveSignedKey(clientSocket, alicePublic, aliceXMSSPK, &result);  // получаем (и проверяем) подписанный #XMSS ключ клиента
+    bool recieved = receiveSignedKey(clientSocket, alicePublic, clientVerifyKey, &result);  // получаем (и проверяем) подписанный #XMSS ключ клиента
 
     if(!recieved) {
         std::cout << "Could not verify signature! Error code: " << result << std::endl;

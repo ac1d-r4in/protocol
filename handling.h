@@ -17,6 +17,7 @@ std::vector<uint8_t> generate256BitNumber() {
     return number;
 }
 
+// создание #XMSS объекта для подписи сообщений
 XMSS createNewXMSSObject() {
     std::vector<uint8_t> sign1 = generate256BitNumber();
     std::vector<uint8_t> sign2 = generate256BitNumber();
@@ -24,6 +25,7 @@ XMSS createNewXMSSObject() {
     return XMSS(sign1, sign2);
 }
 
+// вывод сообщения в hex-формате
 void print_hex(const char* label, const uint8_t* data, size_t size) {
     std::cout << label << ": ";
     for (size_t i = 0; i < size; ++i) {
@@ -32,83 +34,86 @@ void print_hex(const char* label, const uint8_t* data, size_t size) {
     std::cout << std::dec << std::endl; // Возвращаем формат вывода обратно в десятичный
 }
 
-// подпись и отправка сообщения
-void sendXMSSPublicKey(int socket, XMSS &xmss) {
-    // Получаем публичный ключ XMSS
-    std::vector<uint8_t> publicKey = xmss.getPublicKey();
+// отправка ключа для проверки подписи
+void sendVerificationKey(int socket, XMSS &xmss) {
+    std::vector<uint8_t> verificationKey = xmss.getPublicKey();
 
-    if (publicKey.size() != XMSS_KEY_LEN) {
+    if (verificationKey.size() != XMSS_KEY_LEN) {
         throw std::runtime_error("Public key size mismatch. Expected 32 bytes.");
     }
 
-    // Отправляем публичный ключ
-    size_t bytesSent = send(socket, publicKey.data(), publicKey.size(), 0);
-    if (bytesSent != publicKey.size()) {
+    size_t bytesSent = send(socket, verificationKey.data(), verificationKey.size(), 0);
+    if (bytesSent != verificationKey.size()) {
         throw std::runtime_error("Error sending public key.");
     }
 
-    print_hex("Sending", publicKey.data(), publicKey.size());
+    // print_hex("Sending", publicKey.data(), publicKey.size());
 }
 
-void receiveXMSSPublicKey(int socket, uint8_t* publicKey) {
-    ssize_t bytesRead = recv(socket, publicKey, XMSS_KEY_LEN, 0);
+// получение ключа для проверки подписи
+void receiveVerificationKey(int socket, uint8_t* verificationKey) {
+    ssize_t bytesRead = recv(socket, verificationKey, XMSS_KEY_LEN, 0);
     if (bytesRead <= 0 || bytesRead != XMSS_KEY_LEN) {
         throw std::runtime_error("Error receiving public key or invalid key size.");
     }
 
-    print_hex("Received", publicKey, XMSS_KEY_LEN);
+    // print_hex("Received", publicKey, XMSS_KEY_LEN);
 }
 
 // подпись и отправка сообщения
 void sendSignedKey(int socket, const uint8_t* key, XMSS &xmss) {
 
-    std::size_t messageLen = CURVE25519_KEY_LEN;
-
-    std::vector<uint8_t> signature = xmss.getSignature(std::vector<uint8_t>(key, key + messageLen));
-
-    // Конвертируем размеры в сетевой порядок
-    uint32_t msgLen = htonl(static_cast<uint32_t>(messageLen));
+    std::vector<uint8_t> signature = xmss.getSignature(std::vector<uint8_t>(key, key + CURVE25519_KEY_LEN));
     uint32_t sigLen = htonl(static_cast<uint32_t>(signature.size()));
 
     std::vector<uint8_t> buffer;
-    buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&msgLen), reinterpret_cast<uint8_t*>(&msgLen) + sizeof(msgLen));
-    buffer.insert(buffer.end(), key, key + messageLen);
-    buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&sigLen), reinterpret_cast<uint8_t*>(&sigLen) + sizeof(sigLen));
+    buffer.insert(buffer.end(), key, key + CURVE25519_KEY_LEN);
+    buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&sigLen), reinterpret_cast<uint8_t*>(&sigLen) + sizeof(sigLen)); // Добавляем длину подписи
     buffer.insert(buffer.end(), signature.begin(), signature.end());
 
     size_t bytesSent = send(socket, buffer.data(), buffer.size(), 0);
+    if (bytesSent != buffer.size()) {
+        throw std::runtime_error("Error sending signed key.");
+    }
 }
 
 // получение и валидация сообщения
 bool receiveSignedKey(int socket, uint8_t* senderPublicKey, uint8_t* senderVerifyKey, int* returnCode) {
-    int size = BUFFER_SIZE;
-    char* buffer = new char[size];
+    const size_t bufferSize = BUFFER_SIZE;
 
-    ssize_t bytesRead = recv(socket, buffer, size, 0);
-    if (bytesRead < 0) {
+    char* buffer = new char[bufferSize];
+
+    // Принимаем данные
+    ssize_t bytesRead = recv(socket, buffer, bufferSize, 0);
+    if (bytesRead <= 0) {
         delete[] buffer;
-        *returnCode = 1; // Ошибка при чтении
-        return false;
-    }
-    if (bytesRead == 0) {
-        delete[] buffer;
-        *returnCode = 2; // Подключение закрыто
+        *returnCode = (bytesRead == 0) ? 2 : 1; // 2 - закрыто, 1 - ошибка чтения
         return false;
     }
 
-    uint32_t msgLen = ntohl(*reinterpret_cast<uint32_t*>(buffer));
-    if (msgLen != CURVE25519_KEY_LEN) {
+    // Проверяем, что сообщение содержит ключ фиксированной длины
+    if (bytesRead <= CURVE25519_KEY_LEN + sizeof(uint32_t)) {
         delete[] buffer;
-        *returnCode = 4; // Неверная длина сообщения
+        *returnCode = 4; // Неверный формат данных
         return false;
     }
 
-    std::memcpy(senderPublicKey, buffer + 4, CURVE25519_KEY_LEN);
+    // Извлекаем публичный ключ отправителя
+    std::memcpy(senderPublicKey, buffer, CURVE25519_KEY_LEN);
+
+    // Извлекаем длину подписи
+    uint32_t sigLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + CURVE25519_KEY_LEN));
+
+    // Проверяем, что оставшихся данных достаточно для подписи
+    if (bytesRead < CURVE25519_KEY_LEN + sizeof(uint32_t) + sigLen) {
+        delete[] buffer;
+        *returnCode = 4; // Неверный формат данных
+        return false;
+    }
+
+    std::vector<uint8_t> signature(buffer + CURVE25519_KEY_LEN + sizeof(uint32_t), buffer + CURVE25519_KEY_LEN + sizeof(uint32_t) + sigLen);
+
     std::vector<uint8_t> messageVec(senderPublicKey, senderPublicKey + CURVE25519_KEY_LEN);
-
-    uint32_t sigLen = ntohl(*reinterpret_cast<uint32_t*>(buffer + 4 + msgLen));
-    std::vector<uint8_t> signature(buffer + 4 + msgLen + 4, buffer + 4 + msgLen + 4 + sigLen);
-
     std::vector<uint8_t> senderVerifyKeyVec(senderVerifyKey, senderVerifyKey + XMSS_KEY_LEN);
 
     bool isValid = XMSS::Verify(messageVec, signature, senderVerifyKeyVec);
@@ -122,6 +127,7 @@ bool receiveSignedKey(int socket, uint8_t* senderPublicKey, uint8_t* senderVerif
     return true;
 }
 
+// генерация nonce для #ChaCha20 используя таймстемп
 void getTimestampNonce(uint8_t* nonce) {
 
     size_t size = CHACHA20_NONCE_LEN;
@@ -133,6 +139,7 @@ void getTimestampNonce(uint8_t* nonce) {
     }
 }
 
+// генерация ключа для #ChaCha20 из хеша #Keccak
 void getSharedSecretHash(uint8_t* out, const uint8_t* msg) {
 
     size_t msgLen = CHACHA20_KEY_LEN;
@@ -143,6 +150,7 @@ void getSharedSecretHash(uint8_t* out, const uint8_t* msg) {
     std::copy(resultVector.begin(), resultVector.end(), out);
 }
 
+// обертка для шифрования и дешифрования сообщений с #ChaCha20
 void chacha20Wrapper(char* out, const char* in, size_t msgLength, const uint8_t* key, bool decrypt = false) {
     uint8_t nonce[CHACHA20_NONCE_LEN];
     const uint8_t* inputData;
